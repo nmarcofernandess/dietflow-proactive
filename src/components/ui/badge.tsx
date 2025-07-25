@@ -15,6 +15,14 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        // Medical status variants
+        flow: "border-transparent bg-flow text-flow-foreground hover:bg-flow/80",
+        active: "border-transparent bg-active text-active-foreground hover:bg-active/80",
+        inactive: "border-transparent bg-inactive text-inactive-foreground hover:bg-inactive/80",
+        new: "border-transparent bg-new text-new-foreground hover:bg-new/80",
+        success: "border-transparent bg-success text-success-foreground hover:bg-success/80",
+        warning: "border-transparent bg-warning text-warning-foreground hover:bg-warning/80",
+        muted: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
       },
     },
     defaultVariants: {
