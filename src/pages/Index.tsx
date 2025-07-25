@@ -5,23 +5,28 @@ import { Calendar, Bot, Sparkles } from "lucide-react";
 import { TabAgendamento } from "@/components/agenda/TabAgendamento";
 import { TabGestaoProativa } from "@/components/agenda/TabGestaoProativa";
 import { ModalNovoAgendamento } from "@/components/agenda/modals/ModalNovoAgendamento";
+import { ModalConfigurarAgenda } from "@/components/agenda/modals/ModalConfigurarAgenda";
+import { ModalBloquearAgenda } from "@/components/agenda/modals/ModalBloquearAgenda";
+import { ModalConfigurarGestaoProativa } from "@/components/agenda/modals/ModalConfigurarGestaoProativa";
 import heroImage from "@/assets/hero-medical-dashboard.jpg";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("agendamento");
   const [isModalNovoAgendamentoOpen, setIsModalNovoAgendamentoOpen] = useState(false);
+  const [isModalConfigurarAgendaOpen, setIsModalConfigurarAgendaOpen] = useState(false);
+  const [isModalBloquearAgendaOpen, setIsModalBloquearAgendaOpen] = useState(false);
+  const [isModalConfigurarGestaoOpen, setIsModalConfigurarGestaoOpen] = useState(false);
 
-  // Funções placeholder para modais que serão implementados depois
   const handleConfigurarAgenda = () => {
-    console.log("Configurar agenda - Modal será implementado");
+    setIsModalConfigurarAgendaOpen(true);
   };
 
   const handleBloquearAgenda = () => {
-    console.log("Bloquear agenda - Modal será implementado");
+    setIsModalBloquearAgendaOpen(true);
   };
 
   const handleConfigurarGestao = () => {
-    console.log("Configurar gestão - Modal será implementado");
+    setIsModalConfigurarGestaoOpen(true);
   };
 
   return (
@@ -106,6 +111,21 @@ const Index = () => {
       <ModalNovoAgendamento
         isOpen={isModalNovoAgendamentoOpen}
         onClose={() => setIsModalNovoAgendamentoOpen(false)}
+      />
+      
+      <ModalConfigurarAgenda
+        isOpen={isModalConfigurarAgendaOpen}
+        onClose={() => setIsModalConfigurarAgendaOpen(false)}
+      />
+      
+      <ModalBloquearAgenda
+        isOpen={isModalBloquearAgendaOpen}
+        onClose={() => setIsModalBloquearAgendaOpen(false)}
+      />
+      
+      <ModalConfigurarGestaoProativa
+        isOpen={isModalConfigurarGestaoOpen}
+        onClose={() => setIsModalConfigurarGestaoOpen(false)}
       />
     </div>
   );
