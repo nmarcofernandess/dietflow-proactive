@@ -21,19 +21,28 @@ export function CalendarioCompleto({ onNovoAgendamento, onEditarAgendamento }: C
   const { agendamentos, atualizarStatusAgendamento, removerAgendamento } = useAgendaInteligente();
   const calendarRef = useRef<FullCalendar>(null);
 
+  // Debug: log agendamentos
+  console.log('CalendarioCompleto - agendamentos:', agendamentos);
+
   // Converter agendamentos para eventos do FullCalendar
-  const eventos = agendamentos.map(agendamento => ({
-    id: agendamento.id.toString(),
-    title: `${agendamento.pacienteNome} - ${agendamento.tipo}`,
-    start: `${agendamento.data}T${agendamento.horario}`,
-    end: `${agendamento.data}T${addMinutes(agendamento.horario, agendamento.duracao)}`,
-    backgroundColor: getStatusColor(agendamento.status),
-    borderColor: getStatusColor(agendamento.status),
-    textColor: getTextColor(agendamento.status),
-    extendedProps: {
-      agendamento,
-    },
-  }));
+  const eventos = agendamentos.map(agendamento => {
+    const evento = {
+      id: agendamento.id.toString(),
+      title: `${agendamento.pacienteNome} - ${agendamento.tipo}`,
+      start: `${agendamento.data}T${agendamento.horario}`,
+      end: `${agendamento.data}T${addMinutes(agendamento.horario, agendamento.duracao)}`,
+      backgroundColor: getStatusColor(agendamento.status),
+      borderColor: getStatusColor(agendamento.status),
+      textColor: getTextColor(agendamento.status),
+      extendedProps: {
+        agendamento,
+      },
+    };
+    console.log('Evento criado:', evento);
+    return evento;
+  });
+
+  console.log('Todos os eventos:', eventos);
 
   // Função para adicionar minutos ao horário
   function addMinutes(time: string, minutes: number): string {
@@ -212,43 +221,16 @@ export function CalendarioCompleto({ onNovoAgendamento, onEditarAgendamento }: C
       {/* Calendário */}
       <div className="calendar-container">
         <FullCalendar
-          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
-          headerToolbar={false} // Usar nossos próprios controles
+          headerToolbar={false}
           events={eventos}
           eventClick={handleEventClick}
           dateClick={handleDateClick}
-          select={handleSelect}
           selectable={true}
-          selectMirror={true}
           dayMaxEvents={true}
-          weekends={true}
-          eventContent={renderEventContent}
           height="auto"
-          locale="pt-br"
-          slotMinTime="06:00:00"
-          slotMaxTime="20:00:00"
-          allDaySlot={false}
-          slotDuration="00:30:00"
-          expandRows={true}
           eventDisplay="block"
-          dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-          businessHours={{
-            daysOfWeek: [1, 2, 3, 4, 5], // Segunda a sexta
-            startTime: '08:00',
-            endTime: '18:00',
-          }}
-          slotLabelFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: false
-          }}
-          eventTimeFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: false
-          }}
         />
       </div>
 

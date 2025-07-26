@@ -82,7 +82,13 @@ export function useAgendaInteligente() {
   // Função para adicionar novo agendamento
   const adicionarAgendamento = (novoAgendamento: Omit<Agendamento, 'id'>) => {
     const id = Math.max(...agendamentos.map(a => a.id), 0) + 1;
-    setAgendamentos(prev => [...prev, { ...novoAgendamento, id }]);
+    const agendamentoComId = { ...novoAgendamento, id };
+    console.log('Adicionando agendamento:', agendamentoComId);
+    setAgendamentos(prev => {
+      const novosAgendamentos = [...prev, agendamentoComId];
+      console.log('Agendamentos após adicionar:', novosAgendamentos);
+      return novosAgendamentos;
+    });
   };
 
   // Função para atualizar status de agendamento
