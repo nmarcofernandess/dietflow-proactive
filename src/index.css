@@ -2,6 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
+/* FullCalendar Styles */
+.fc {
+  font-family: inherit;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.fc-theme-standard td, 
+.fc-theme-standard th {
+  border-color: hsl(var(--border));
+}
+
+.fc-col-header-cell {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  padding: 8px 4px;
+}
+
+.fc-daygrid-day {
+  background-color: hsl(var(--background));
+}
+
+.fc-daygrid-day:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.fc-day-today {
+  background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+.fc-event {
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fc-event-title {
+  font-weight: 500;
+}
+
+.fc-timegrid-slot {
+  height: 2.5rem;
+}
+
+.fc-timegrid-slot-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.fc-button {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.fc-button:hover {
+  background-color: hsl(var(--primary) / 0.9);
+  border-color: hsl(var(--primary) / 0.9);
+}
+
+.fc-button:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+.fc-button-active {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+}
+
+.fc-list-event {
+  cursor: pointer;
+}
+
+.fc-list-event:hover {
+  background-color: hsl(var(--muted));
+}
+
+.fc-popover {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.fc-more-link {
+  color: hsl(var(--primary));
+  font-weight: 500;
+}
+
+.fc-more-link:hover {
+  color: hsl(var(--primary) / 0.8);
+}
+
+/* Business hours styling */
+.fc-non-business {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Weekend styling */
+.fc-day-sat,
+.fc-day-sun {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+/* Dark mode adjustments */
+.dark .fc-col-header-cell {
+  background-color: hsl(var(--muted));
+}
+
+.dark .fc-non-business {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.calendar-container {
+  background-color: hsl(var(--background));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

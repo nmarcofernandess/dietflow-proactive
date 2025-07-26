@@ -92,6 +92,13 @@ export function useAgendaInteligente() {
     ));
   };
 
+  // Função para atualizar agendamento completo
+  const atualizarAgendamento = (agendamentoAtualizado: Agendamento) => {
+    setAgendamentos(prev => prev.map(agendamento => 
+      agendamento.id === agendamentoAtualizado.id ? agendamentoAtualizado : agendamento
+    ));
+  };
+
   // Função para remover agendamento
   const removerAgendamento = (id: number) => {
     setAgendamentos(prev => prev.filter(agendamento => agendamento.id !== id));
@@ -124,6 +131,7 @@ export function useAgendaInteligente() {
     atualizarFiltroAgendamento,
     adicionarAgendamento,
     atualizarStatusAgendamento,
+    atualizarAgendamento,
     removerAgendamento,
     atualizarConfiguracao,
   };

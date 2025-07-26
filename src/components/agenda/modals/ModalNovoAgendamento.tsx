@@ -24,14 +24,17 @@ import { CalendarDays, Clock, MapPin, Settings, User } from "lucide-react";
 import { mockPacientes } from "@/utils/mockData";
 import { NovoAgendamentoForm, TipoConsulta, LocalAtendimento } from "@/types/agenda";
 import { useAgendaInteligente } from "@/hooks/useAgendaInteligente";
+import { Agendamento } from "@/types/agenda";
+import { useEffect } from "react";
 
 interface ModalNovoAgendamentoProps {
   isOpen: boolean;
   onClose: () => void;
+  agendamentoEditando?: Agendamento | null;
 }
 
-export function ModalNovoAgendamento({ isOpen, onClose }: ModalNovoAgendamentoProps) {
-  const { adicionarAgendamento } = useAgendaInteligente();
+export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: ModalNovoAgendamentoProps) {
+  const { adicionarAgendamento, atualizarAgendamento } = useAgendaInteligente();
   
   const [form, setForm] = useState<NovoAgendamentoForm>({
     pacienteId: 0,
@@ -47,6 +50,45 @@ export function ModalNovoAgendamento({ isOpen, onClose }: ModalNovoAgendamentoPr
     observacoes: "",
     avisarPaciente: true
   });
+
+  // Carregar dados do agendamento para edição
+  useEffect(() => {
+    if (agendamentoEditando) {
+      const duracao = agendamentoEditando.duracao || 60;
+      const horaFim = calcularHoraFim(agendamentoEditando.horario, agendamentoEditando.tipo);
+      
+      setForm({
+        pacienteId: agendamentoEditando.pacienteId,
+        data: agendamentoEditando.data,
+        horaInicio: agendamentoEditando.horario,
+        horaFim: horaFim,
+        tipo: agendamentoEditando.tipo,
+        status: agendamentoEditando.status,
+        local: agendamentoEditando.local,
+        videoconferencia: agendamentoEditando.videoconferencia || false,
+        recorrencia: "nunca",
+        controleFinanceiro: agendamentoEditando.controleFinanceiro,
+        observacoes: agendamentoEditando.observacoes || "",
+        avisarPaciente: agendamentoEditando.avisarPaciente
+      });
+    } else {
+      // Reset para novo agendamento
+      setForm({
+        pacienteId: 0,
+        data: new Date().toISOString().split('T')[0],
+        horaInicio: "09:00",
+        horaFim: "10:00",
+        tipo: "Consulta",
+        status: "agendado",
+        local: "Consultório",
+        videoconferencia: false,
+        recorrencia: "nunca",
+        controleFinanceiro: true,
+        observacoes: "",
+        avisarPaciente: true
+      });
+    }
+  }, [agendamentoEditando]);
 
   const calcularHoraFim = (horaInicio: string, tipo: TipoConsulta) => {
     const [hora, minuto] = horaInicio.split(':').map(Number);
@@ -74,20 +116,42 @@ export function ModalNovoAgendamento({ isOpen, onClose }: ModalNovoAgendamentoPr
 
     const duracao = form.tipo === "Retorno" ? 45 : 60;
 
-    adicionarAgendamento({
-      pacienteId: form.pacienteId,
-      pacienteNome: pacienteSelecionado.nome,
-      data: form.data,
-      horario: form.horaInicio,
-      tipo: form.tipo,
-      duracao,
-      status: form.status,
-      local: form.local,
-      observacoes: form.observacoes,
-      avisarPaciente: form.avisarPaciente,
-      controleFinanceiro: form.controleFinanceiro,
-      videoconferencia: form.videoconferencia
-    });
+    if (agendamentoEditando) {
+      // Atualizar agendamento existente
+      const agendamentoAtualizado = {
+        ...agendamentoEditando,
+        pacienteId: form.pacienteId,
+        pacienteNome: pacienteSelecionado.nome,
+        data: form.data,
+        horario: form.horaInicio,
+        tipo: form.tipo,
+        duracao,
+        status: form.status,
+        local: form.local,
+        observacoes: form.observacoes,
+        avisarPaciente: form.avisarPaciente,
+        controleFinanceiro: form.controleFinanceiro,
+        videoconferencia: form.videoconferencia
+      };
+      
+      atualizarAgendamento(agendamentoAtualizado);
+    } else {
+      // Criar novo agendamento
+      adicionarAgendamento({
+        pacienteId: form.pacienteId,
+        pacienteNome: pacienteSelecionado.nome,
+        data: form.data,
+        horario: form.horaInicio,
+        tipo: form.tipo,
+        duracao,
+        status: form.status,
+        local: form.local,
+        observacoes: form.observacoes,
+        avisarPaciente: form.avisarPaciente,
+        controleFinanceiro: form.controleFinanceiro,
+        videoconferencia: form.videoconferencia
+      });
+    }
 
     onClose();
     
@@ -130,10 +194,13 @@ export function ModalNovoAgendamento({ isOpen, onClose }: ModalNovoAgendamentoPr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5" />
-            Novo Agendamento
+            {agendamentoEditando ? 'Editar Agendamento' : 'Novo Agendamento'}
           </DialogTitle>
           <DialogDescription>
-            Crie um novo agendamento preenchendo as informações abaixo
+            {agendamentoEditando 
+              ? 'Edite as informações do agendamento abaixo' 
+              : 'Crie um novo agendamento preenchendo as informações abaixo'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -361,7 +428,7 @@ export function ModalNovoAgendamento({ isOpen, onClose }: ModalNovoAgendamentoPr
               Cancelar
             </Button>
             <Button type="submit" variant="medical">
-              Criar Agendamento
+              {agendamentoEditando ? 'Salvar Alterações' : 'Criar Agendamento'}
             </Button>
           </div>
         </form>

@@ -4,18 +4,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Bot, Sparkles } from "lucide-react";
 import { TabAgendamento } from "@/components/agenda/TabAgendamento";
 import { TabGestaoProativa } from "@/components/agenda/TabGestaoProativa";
+import { CalendarioCompleto } from "@/components/agenda/CalendarioCompleto";
 import { ModalNovoAgendamento } from "@/components/agenda/modals/ModalNovoAgendamento";
 import { ModalConfigurarAgenda } from "@/components/agenda/modals/ModalConfigurarAgenda";
 import { ModalBloquearAgenda } from "@/components/agenda/modals/ModalBloquearAgenda";
 import { ModalConfigurarGestaoProativa } from "@/components/agenda/modals/ModalConfigurarGestaoProativa";
+import { Agendamento } from "@/types/agenda";
 import heroImage from "@/assets/hero-medical-dashboard.jpg";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("agendamento");
+  const [activeTab, setActiveTab] = useState("calendario");
   const [isModalNovoAgendamentoOpen, setIsModalNovoAgendamentoOpen] = useState(false);
   const [isModalConfigurarAgendaOpen, setIsModalConfigurarAgendaOpen] = useState(false);
   const [isModalBloquearAgendaOpen, setIsModalBloquearAgendaOpen] = useState(false);
   const [isModalConfigurarGestaoOpen, setIsModalConfigurarGestaoOpen] = useState(false);
+  const [agendamentoEditando, setAgendamentoEditando] = useState<Agendamento | null>(null);
 
   const handleConfigurarAgenda = () => {
     setIsModalConfigurarAgendaOpen(true);
@@ -27,6 +30,16 @@ const Index = () => {
 
   const handleConfigurarGestao = () => {
     setIsModalConfigurarGestaoOpen(true);
+  };
+
+  const handleEditarAgendamento = (agendamento: Agendamento) => {
+    setAgendamentoEditando(agendamento);
+    setIsModalNovoAgendamentoOpen(true);
+  };
+
+  const handleCloseModalAgendamento = () => {
+    setIsModalNovoAgendamentoOpen(false);
+    setAgendamentoEditando(null);
   };
 
   return (
@@ -71,13 +84,20 @@ const Index = () => {
         <Card className="shadow-glow border-0">
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 rounded-none h-14">
+              <TabsList className="grid w-full grid-cols-3 rounded-none h-14">
+                <TabsTrigger 
+                  value="calendario" 
+                  className="flex items-center gap-2 text-base data-[state=active]:shadow-medical"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Calendário
+                </TabsTrigger>
                 <TabsTrigger 
                   value="agendamento" 
                   className="flex items-center gap-2 text-base data-[state=active]:shadow-medical"
                 >
                   <Calendar className="w-5 h-5" />
-                  Agendamento
+                  Lista
                 </TabsTrigger>
                 <TabsTrigger 
                   value="gestao" 
@@ -88,6 +108,13 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
               
+              <TabsContent value="calendario" className="mt-0">
+                <CalendarioCompleto
+                  onNovoAgendamento={() => setIsModalNovoAgendamentoOpen(true)}
+                  onEditarAgendamento={handleEditarAgendamento}
+                />
+              </TabsContent>
+
               <TabsContent value="agendamento" className="mt-0">
                 <TabAgendamento
                   onNovoAgendamento={() => setIsModalNovoAgendamentoOpen(true)}
@@ -110,7 +137,8 @@ const Index = () => {
       {/* Modals */}
       <ModalNovoAgendamento
         isOpen={isModalNovoAgendamentoOpen}
-        onClose={() => setIsModalNovoAgendamentoOpen(false)}
+        onClose={handleCloseModalAgendamento}
+        agendamentoEditando={agendamentoEditando}
       />
       
       <ModalConfigurarAgenda
