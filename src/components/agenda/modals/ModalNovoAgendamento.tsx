@@ -106,8 +106,6 @@ export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: M
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Submit form data:', form);
-    
     if (form.pacienteId === 0) {
       alert("Por favor, selecione um paciente");
       return;
