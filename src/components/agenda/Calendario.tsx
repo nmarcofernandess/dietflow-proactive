@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAgendaInteligente } from '@/hooks/useAgendaInteligente';
+import { useConfiguracoes } from '@/hooks/useConfiguracoes';
 import { Agendamento, StatusAgendamento } from '@/types/agenda';
 import { 
   CalendarIcon, 
@@ -19,9 +20,13 @@ import {
   CheckCircle, 
   Plus, 
   Settings, 
-  Lock 
+  Lock,
+  Monitor,
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
+import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 
 interface CalendarioProps {
   onNovoAgendamento: () => void;
@@ -46,8 +51,20 @@ export function Calendario({
     removerAgendamento 
   } = useAgendaInteligente();
 
+  const { configuracao, isHorarioBloqueado } = useConfiguracoes();
+  const { toast } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
-  const [visualizacao, setVisualizacao] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek'>('dayGridMonth');
+  const [visualizacao, setVisualizacao] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek'>('timeGridWeek');
+
+  // Forçar re-render quando eventos mudam
+  useEffect(() => {
+    if (calendarRef.current) {
+      setTimeout(() => {
+        const calendarApi = calendarRef.current?.getApi();
+        calendarApi?.refetchEvents();
+      }, 0);
+    }
+  }, [agendamentos]);
 
   // Converter agendamentos para eventos do FullCalendar
   const eventos = agendamentos.map(agendamento => ({
@@ -60,8 +77,20 @@ export function Calendario({
     textColor: getTextColor(agendamento.status),
     extendedProps: {
       agendamento,
+      pacienteNome: agendamento.pacienteNome,
+      statusAgendamento: agendamento.status,
+      modalidadeConsulta: agendamento.videoconferencia ? 'online' : 'presencial',
+      tipoConsulta: agendamento.tipo,
+      valor: '150',
+      statusPagamento: 'pendente',
+      motivoConsulta: agendamento.observacoes || '',
     },
   }));
+
+  // Função para fornecer eventos ao FullCalendar
+  const eventsFunction = useCallback((info: any, successCallback: any) => {
+    successCallback(eventos);
+  }, [eventos]);
 
   // Função para adicionar minutos ao horário
   function addMinutes(time: string, minutes: number): string {
@@ -121,23 +150,83 @@ export function Calendario({
   }, [onNovoAgendamento, setDataSelecionada]);
 
   // Manipular seleção de horário
-  const handleSelect = useCallback((info: any) => {
-    setDataSelecionada(info.startStr.split('T')[0]);
+  const handleSelect = useCallback((selectInfo: any) => {
+    const startDate = new Date(selectInfo.start);
+    const hora = startDate.toTimeString().substring(0, 5);
+    
+    // Verificar se o horário está bloqueado
+    if (isHorarioBloqueado(startDate, hora)) {
+      toast({
+        title: "Horário bloqueado",
+        description: "Este horário não está disponível para agendamento.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setDataSelecionada(selectInfo.startStr.split('T')[0]);
     onNovoAgendamento();
-  }, [onNovoAgendamento, setDataSelecionada]);
+  }, [onNovoAgendamento, setDataSelecionada, isHorarioBloqueado, toast]);
+
+  // Ícones para modalidade e status
+  const getModalidadeIcon = (modalidade: string) => {
+    switch (modalidade) {
+      case 'presencial': return <User className="h-3 w-3" />;
+      case 'online': return <Monitor className="h-3 w-3" />;
+      case 'hibrido': return <Clock className="h-3 w-3" />;
+      default: return <CalendarIcon className="h-3 w-3" />;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'agendado': return <Clock className="h-3 w-3" />;
+      case 'confirmado': return <CalendarIcon className="h-3 w-3" />;
+      case 'cancelado': return <AlertCircle className="h-3 w-3" />;
+      default: return <CalendarIcon className="h-3 w-3" />;
+    }
+  };
 
   // Renderizar conteúdo do evento
   const renderEventContent = (eventInfo: any) => {
-    const agendamento = eventInfo.event.extendedProps.agendamento;
-    
-    return (
-      <div className="p-1 text-xs">
-        <div className="font-medium truncate">{agendamento.pacienteNome}</div>
-        <div className="text-xs opacity-90 truncate">{agendamento.tipo}</div>
-        <div className="flex items-center gap-1 mt-1">
-          <Clock className="w-3 h-3" />
-          <span>{agendamento.horario}</span>
+    const { extendedProps } = eventInfo.event;
+    const isSmallView = eventInfo.view.type === 'dayGridMonth';
+
+    if (isSmallView) {
+      return (
+        <div className="fc-event-content p-1 text-xs">
+          <div className="flex items-center gap-1 truncate">
+            {getStatusIcon(extendedProps.statusAgendamento)}
+            <span className="truncate">{extendedProps.pacienteNome}</span>
+          </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="fc-event-content p-2 space-y-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {getStatusIcon(extendedProps.statusAgendamento)}
+            <span className="font-medium text-sm truncate">
+              {extendedProps.pacienteNome}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            {getModalidadeIcon(extendedProps.modalidadeConsulta)}
+            {extendedProps.statusPagamento === 'pendente' && (
+              <DollarSign className="h-3 w-3 text-yellow-600" />
+            )}
+          </div>
+        </div>
+        <div className="text-xs text-current/80">
+          {extendedProps.tipoConsulta.replace('_', ' ')} - R$ {extendedProps.valor}
+        </div>
+        {extendedProps.motivoConsulta && (
+          <div className="text-xs text-current/70 truncate">
+            {extendedProps.motivoConsulta}
+          </div>
+        )}
       </div>
     );
   };
@@ -350,48 +439,243 @@ export function Calendario({
       </div>
 
       {/* Calendário */}
-      <Card className="p-6">
-        <div className="calendar-container">
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={false} // Usar nossos próprios controles
-            events={eventos}
-            eventClick={handleEventClick}
-            dateClick={handleDateClick}
-            select={handleSelect}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={true}
-            weekends={true}
-            eventContent={renderEventContent}
-            height="auto"
-            locale="pt-br"
-            slotMinTime="06:00:00"
-            slotMaxTime="20:00:00"
-            allDaySlot={false}
-            slotDuration="00:30:00"
-            expandRows={true}
-            eventDisplay="block"
-            dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-            businessHours={{
-              daysOfWeek: [1, 2, 3, 4, 5], // Segunda a sexta
-              startTime: '08:00',
-              endTime: '18:00',
-            }}
-            slotLabelFormat={{
-              hour: 'numeric',
-              minute: '2-digit',
-              meridiem: false
-            }}
-            eventTimeFormat={{
-              hour: 'numeric',
-              minute: '2-digit',
-              meridiem: false
-            }}
-          />
-        </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="calendar-container">
+            <style>{`
+              .calendar-container .fc {
+                --fc-small-font-size: 0.75rem;
+                --fc-page-bg-color: transparent;
+                --fc-neutral-bg-color: hsl(var(--muted));
+                --fc-neutral-text-color: hsl(var(--muted-foreground));
+                --fc-border-color: hsl(var(--border));
+                --fc-button-text-color: hsl(var(--primary-foreground));
+                --fc-button-bg-color: hsl(var(--primary));
+                --fc-button-border-color: hsl(var(--primary));
+                --fc-button-hover-bg-color: hsl(var(--primary));
+                --fc-button-hover-border-color: hsl(var(--primary));
+                --fc-button-active-bg-color: hsl(var(--primary));
+                --fc-button-active-border-color: hsl(var(--primary));
+                --fc-event-bg-color: hsl(var(--primary));
+                --fc-event-border-color: hsl(var(--primary));
+                --fc-event-text-color: hsl(var(--primary-foreground));
+                --fc-today-bg-color: hsl(var(--accent) / 0.3);
+              }
+
+              .calendar-container .fc-event {
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border-radius: 6px;
+                border-width: 1px;
+                margin: 1px;
+              }
+
+              .calendar-container .fc-event:hover {
+                filter: brightness(1.1);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+              }
+
+              .calendar-container .fc-toolbar-title {
+                font-size: 1.5rem;
+                font-weight: 600;
+                color: hsl(var(--foreground));
+              }
+
+              .calendar-container .fc-button {
+                border-radius: 6px;
+                font-weight: 500;
+                padding: 0.5rem 1rem;
+                transition: all 0.2s ease;
+              }
+
+              .calendar-container .fc-button:not(:disabled):hover {
+                transform: translateY(-1px);
+              }
+
+              .calendar-container .fc-daygrid-day-number {
+                color: hsl(var(--foreground));
+                font-weight: 500;
+              }
+
+              .calendar-container .fc-col-header-cell-cushion {
+                color: hsl(var(--muted-foreground));
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 0.75rem;
+                letter-spacing: 0.05em;
+              }
+
+              .calendar-container .fc-timegrid-slot-label-cushion {
+                color: hsl(var(--muted-foreground));
+                font-size: 0.75rem;
+              }
+
+              .calendar-container .fc-scrollgrid {
+                border-color: hsl(var(--border));
+              }
+
+              .calendar-container .fc-scrollgrid td {
+                border-color: hsl(var(--border));
+              }
+
+              @media (max-width: 768px) {
+                .calendar-container .fc-toolbar {
+                  flex-direction: column;
+                  gap: 0.5rem;
+                }
+
+                .calendar-container .fc-toolbar-chunk {
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  gap: 0.25rem;
+                }
+
+                .calendar-container .fc-button {
+                  padding: 0.25rem 0.5rem;
+                  font-size: 0.75rem;
+                }
+
+                .calendar-container .fc-toolbar-title {
+                  font-size: 1.25rem;
+                  margin: 0.5rem 0;
+                }
+              }
+            `}</style>
+
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+              initialView={window.innerWidth >= 768 ? 'timeGridWeek' : 'dayGridDay'}
+              locale={ptBrLocale}
+              timeZone="America/Sao_Paulo"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay configuracoes bloquear novaTarefa',
+              }}
+              customButtons={{
+                novaTarefa: {
+                  text: 'Nova Consulta',
+                  click: () => onNovoAgendamento(),
+                },
+                configuracoes: {
+                  text: 'Configurações',
+                  click: () => onConfigurarAgenda(),
+                },
+                bloquear: {
+                  text: 'Bloquear',
+                  click: () => onBloquearAgenda(),
+                },
+              }}
+              events={eventsFunction}
+              eventContent={renderEventContent}
+              eventClick={handleEventClick}
+              select={handleSelect}
+              editable={true}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              weekends={true}
+              eventOverlap={false}
+              selectOverlap={false}
+              slotMinTime="06:00:00"
+              slotMaxTime="22:00:00"
+              businessHours={Object.entries(configuracao.horarios)
+                .filter(([_, horario]) => horario.ativo)
+                .map(([dia, horario]) => ({
+                  daysOfWeek: [
+                    ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'].indexOf(dia)
+                  ],
+                  startTime: horario.inicio,
+                  endTime: horario.fim,
+                }))}
+              slotDuration={`00:${configuracao.tempoConsulta || '60'}:00`}
+              slotLabelInterval="01:00:00"
+              height="auto"
+              contentHeight="600px"
+              nowIndicator={true}
+              scrollTime="08:00:00"
+              eventDisplay="block"
+              dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
+              slotLabelFormat={{
+                hour: '2-digit',
+                minute: '2-digit',
+                omitZeroMinute: false,
+                meridiem: false,
+              }}
+              allDaySlot={false}
+              expandRows={true}
+              handleWindowResize={true}
+              stickyHeaderDates={true}
+              aspectRatio={window.innerWidth >= 768 ? 2 : 1.2}
+              eventClassNames={(arg) => {
+                const evento = eventos.find(e => e.id === arg.event.id);
+                if (!evento) return [];
+                
+                return [
+                  `event-status-${evento.extendedProps.statusAgendamento}`,
+                  `event-modalidade-${evento.extendedProps.modalidadeConsulta}`,
+                  evento.extendedProps.statusPagamento === 'pendente' ? 'event-payment-pending' : '',
+                ].filter(Boolean);
+              }}
+            />
+          </div>
+
+          {/* Legenda */}
+          <div className="mt-6 pt-4 border-t">
+            <h4 className="text-sm font-medium mb-3">Legenda</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div>
+                <h5 className="font-medium mb-2">Status</h5>
+                <div className="space-y-1">
+                  {[
+                    { status: 'agendado', color: 'bg-primary', label: 'Agendado' },
+                    { status: 'confirmado', color: 'bg-emerald-500', label: 'Confirmado' },
+                    { status: 'cancelado', color: 'bg-destructive', label: 'Cancelado' },
+                    { status: 'bloqueado', color: 'bg-muted', label: 'Bloqueado' },
+                  ].map(({ status, color, label }) => (
+                    <div key={status} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${color}`} />
+                      <span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h5 className="font-medium mb-2">Modalidade</h5>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3 w-3" />
+                    <span>Presencial</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Monitor className="h-3 w-3" />
+                    <span>Online</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Híbrido</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h5 className="font-medium mb-2">Indicadores</h5>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-3 w-3 text-yellow-600" />
+                    <span>Pagamento pendente</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Requer atenção</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Lista de agendamentos do dia selecionado */}
