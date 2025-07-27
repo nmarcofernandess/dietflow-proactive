@@ -6,7 +6,7 @@ import { Calendario } from "@/components/agenda/Calendario";
 import { TabGestaoProativa } from "@/components/agenda/TabGestaoProativa";
 import { ModalNovoAgendamento } from "@/components/agenda/modals/ModalNovoAgendamento";
 import { ModalConfiguracoes } from "@/components/agenda/modals/ModalConfiguracoes";
-import { ModalConfigurarGestaoProativa } from "@/components/agenda/modals/ModalConfigurarGestaoProativa";
+// import { ModalConfigurarGestaoProativa } from "@/components/agenda/modals/ModalConfigurarGestaoProativa";
 import { Agendamento } from "@/types/agenda";
 import heroImage from "@/assets/hero-medical-dashboard.jpg";
 
@@ -14,7 +14,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("calendario");
   const [isModalNovoAgendamentoOpen, setIsModalNovoAgendamentoOpen] = useState(false);
   const [isModalConfiguracoesOpen, setIsModalConfiguracoesOpen] = useState(false);
-  const [isModalConfigurarGestaoOpen, setIsModalConfigurarGestaoOpen] = useState(false);
+  // const [isModalConfigurarGestaoOpen, setIsModalConfigurarGestaoOpen] = useState(false);
   const [agendamentoEditando, setAgendamentoEditando] = useState<Agendamento | null>(null);
 
   const handleConfigurarAgenda = () => {
@@ -26,7 +26,7 @@ const Index = () => {
   };
 
   const handleConfigurarGestao = () => {
-    setIsModalConfigurarGestaoOpen(true);
+    // setIsModalConfigurarGestaoOpen(true);
   };
 
   const handleEditarAgendamento = (agendamento: Agendamento) => {
@@ -103,7 +103,7 @@ const Index = () => {
                   onNovoAgendamento={() => setIsModalNovoAgendamentoOpen(true)}
                   onEditarAgendamento={handleEditarAgendamento}
                   onConfigurarAgenda={handleConfigurarAgenda}
-                  onBloquearAgenda={handleBloquearAgenda}
+                  // onBloquearAgenda={handleBloquearAgenda}
                 />
               </TabsContent>
               
@@ -130,10 +130,10 @@ const Index = () => {
         onClose={() => setIsModalConfiguracoesOpen(false)}
       />
       
-      <ModalConfigurarGestaoProativa
+      {/* <ModalConfigurarGestaoProativa
         isOpen={isModalConfigurarGestaoOpen}
         onClose={() => setIsModalConfigurarGestaoOpen(false)}
-      />
+      /> */}
     </div>
   );
 };

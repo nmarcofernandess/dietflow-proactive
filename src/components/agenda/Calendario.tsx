@@ -1,16 +1,16 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAgendaInteligente } from '@/hooks/useAgendaInteligente';
-import { useConfiguracoes } from '@/hooks/useConfiguracoes';
-import { Agendamento, StatusAgendamento } from '@/types/agenda';
+import { Agendamento, StatusAgendamento, EventoAgenda } from '@/types/agenda';
 import { 
   CalendarIcon, 
   Clock, 
@@ -20,26 +20,29 @@ import {
   CheckCircle, 
   Plus, 
   Settings, 
-  Lock,
   Monitor,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  ChevronLeft,
+  ChevronRight,
+  Home
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 
 interface CalendarioProps {
   onNovoAgendamento: () => void;
   onEditarAgendamento: (agendamento: Agendamento) => void;
   onConfigurarAgenda: () => void;
-  onBloquearAgenda: () => void;
 }
 
 export function Calendario({ 
   onNovoAgendamento, 
   onEditarAgendamento,
-  onConfigurarAgenda,
-  onBloquearAgenda 
+  onConfigurarAgenda 
 }: CalendarioProps) {
   const { 
     agendamentos, 
@@ -49,51 +52,45 @@ export function Calendario({
     estatisticasDoDia,
     atualizarStatusAgendamento, 
     atualizarAgendamento,
-    removerAgendamento 
+    configuracao,
+    isHorarioBloqueado
   } = useAgendaInteligente();
 
-  const { configuracao, isHorarioBloqueado } = useConfiguracoes();
   const { toast } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
   const [visualizacao, setVisualizacao] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek'>('timeGridWeek');
-
-  console.log('📊 Configuração atual do calendário:', configuracao);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Forçar re-render quando eventos mudam
   useEffect(() => {
     if (calendarRef.current) {
-      setTimeout(() => {
-        const calendarApi = calendarRef.current?.getApi();
-        calendarApi?.refetchEvents();
-      }, 0);
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.refetchEvents();
     }
   }, [agendamentos]);
 
   // Converter agendamentos para eventos do FullCalendar
-  const eventos = agendamentos.map(agendamento => ({
-    id: agendamento.id.toString(),
-    title: `${agendamento.pacienteNome} - ${agendamento.tipo}`,
-    start: `${agendamento.data}T${agendamento.horario}`,
-    end: `${agendamento.data}T${addMinutes(agendamento.horario, agendamento.duracao)}`,
-    backgroundColor: getStatusColor(agendamento.status),
-    borderColor: getStatusColor(agendamento.status),
-    textColor: getTextColor(agendamento.status),
-    extendedProps: {
-      agendamento,
-      pacienteNome: agendamento.pacienteNome,
-      statusAgendamento: agendamento.status,
-      modalidadeConsulta: agendamento.videoconferencia ? 'online' : 'presencial',
-      tipoConsulta: agendamento.tipo,
-      valor: '150',
-      statusPagamento: 'pendente',
-      motivoConsulta: agendamento.observacoes || '',
-    },
-  }));
-
-  // Função para fornecer eventos ao FullCalendar
-  const eventsFunction = useCallback((info: any, successCallback: any) => {
-    successCallback(eventos);
-  }, [eventos]);
+  const eventos: EventoAgenda[] = useMemo(() => {
+    return agendamentos.map(agendamento => ({
+      id: agendamento.id.toString(),
+      title: `${agendamento.pacienteNome} - ${agendamento.tipo}`,
+      start: `${agendamento.data}T${agendamento.horario}`,
+      end: `${agendamento.data}T${addMinutes(agendamento.horario, agendamento.duracao)}`,
+      backgroundColor: getStatusColor(agendamento.status),
+      borderColor: getStatusColor(agendamento.status),
+      textColor: getTextColor(agendamento.status),
+      extendedProps: {
+        agendamento,
+        pacienteNome: agendamento.pacienteNome,
+        statusAgendamento: agendamento.status,
+        modalidadeConsulta: agendamento.videoconferencia ? 'online' : 'presencial',
+        tipoConsulta: agendamento.tipo,
+        valor: '150',
+        statusPagamento: 'pendente',
+        motivoConsulta: agendamento.observacoes || '',
+      },
+    }));
+  }, [agendamentos]);
 
   // Função para adicionar minutos ao horário
   function addMinutes(time: string, minutes: number): string {
@@ -107,38 +104,17 @@ export function Calendario({
   // Cores baseadas no status para FullCalendar
   function getStatusColor(status: StatusAgendamento): string {
     switch (status) {
-      case 'agendado': return 'hsl(210 100% 56%)';  // Primary blue
-      case 'confirmado': return 'hsl(142 76% 36%)'; // Success green  
-      case 'cancelado': return 'hsl(0 84% 60%)';    // Destructive red
-      case 'bloqueado': return 'hsl(215 16% 47%)';  // Muted gray
-      default: return 'hsl(210 100% 56%)';
+      case 'agendado': return 'hsl(var(--primary))';
+      case 'confirmado': return 'hsl(var(--flow))'; 
+      case 'cancelado': return 'hsl(var(--destructive))';
+      case 'bloqueado': return 'hsl(var(--muted))';
+      default: return 'hsl(var(--primary))';
     }
   }
 
   function getTextColor(status: StatusAgendamento): string {
-    return status === 'bloqueado' ? 'hsl(var(--muted-foreground))' : '#ffffff';
+    return status === 'bloqueado' ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))';
   }
-
-  // Cores para badges da lista
-  const getBadgeColor = (status: Agendamento['status']) => {
-    switch (status) {
-      case 'confirmado': return 'flow';
-      case 'agendado': return 'warning';
-      case 'cancelado': return 'inactive';
-      case 'bloqueado': return 'muted';
-      default: return 'secondary';
-    }
-  };
-
-  const getStatusLabel = (status: Agendamento['status']) => {
-    switch (status) {
-      case 'confirmado': return 'Confirmado';
-      case 'agendado': return 'Agendado';
-      case 'cancelado': return 'Cancelado';
-      case 'bloqueado': return 'Bloqueado';
-      default: return status;
-    }
-  };
 
   // Manipular clique em evento
   const handleEventClick = useCallback((info: any) => {
@@ -148,7 +124,6 @@ export function Calendario({
 
   // Manipular clique em data
   const handleDateClick = useCallback((info: any) => {
-    console.log('📅 Data clicada:', info.dateStr);
     setDataSelecionada(info.dateStr);
     onNovoAgendamento();
   }, [onNovoAgendamento, setDataSelecionada]);
@@ -156,20 +131,10 @@ export function Calendario({
   // Manipular seleção de horário
   const handleSelect = useCallback((selectInfo: any) => {
     const startDate = new Date(selectInfo.start);
-    const endDate = selectInfo.end ? new Date(selectInfo.end) : undefined;
     const hora = startDate.toTimeString().substring(0, 5);
-    
-    console.log('📅 Horário selecionado:', { 
-      start: selectInfo.start, 
-      end: selectInfo.end, 
-      startDate, 
-      endDate, 
-      hora 
-    });
     
     // Verificar se o horário está bloqueado
     if (isHorarioBloqueado(startDate, hora)) {
-      console.log('🚫 Horário bloqueado detectado!');
       toast({
         title: "Horário bloqueado",
         description: "Este horário não está disponível para agendamento.",
@@ -177,8 +142,6 @@ export function Calendario({
       });
       return;
     }
-    
-    console.log('✅ Horário disponível, prosseguindo...');
     
     // Definir a data selecionada
     const dataStr = selectInfo.startStr.split('T')[0];
@@ -193,19 +156,11 @@ export function Calendario({
     const { event } = dropInfo;
     
     try {
-      // Encontrar agendamento correspondente
       const agendamento = agendamentos.find(a => a.id.toString() === event.id);
       if (!agendamento) return;
 
-      // Converter nova data/hora
       const novaData = event.start.toISOString().split('T')[0];
       const novaHora = event.start.toTimeString().substring(0, 5);
-      
-      console.log('📅 Movendo evento:', { 
-        id: event.id, 
-        novaData, 
-        novaHora 
-      });
 
       // Verificar se novo horário está bloqueado
       if (isHorarioBloqueado(event.start, novaHora)) {
@@ -218,14 +173,12 @@ export function Calendario({
         return;
       }
 
-      // Atualizar agendamento
       const agendamentoAtualizado = {
         ...agendamento,
         data: novaData,
         horario: novaHora
       };
 
-      // Usar hook para atualizar
       atualizarAgendamento(agendamentoAtualizado);
       
       toast({
@@ -240,33 +193,24 @@ export function Calendario({
         variant: 'destructive',
       });
     }
-  }, [agendamentos, isHorarioBloqueado, toast]);
+  }, [agendamentos, isHorarioBloqueado, atualizarAgendamento, toast]);
 
   const handleEventResize = useCallback((resizeInfo: any) => {
     const { event } = resizeInfo;
     
     try {
-      // Encontrar agendamento correspondente
       const agendamento = agendamentos.find(a => a.id.toString() === event.id);
       if (!agendamento) return;
 
-      // Calcular nova duração
       const inicio = new Date(event.start);
       const fim = new Date(event.end);
       const novaDuracao = Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60));
-      
-      console.log('📏 Redimensionando evento:', { 
-        id: event.id, 
-        novaDuracao 
-      });
 
-      // Atualizar agendamento
       const agendamentoAtualizado = {
         ...agendamento,
         duracao: novaDuracao
       };
 
-      // Usar hook para atualizar
       atualizarAgendamento(agendamentoAtualizado);
       
       toast({
@@ -281,7 +225,7 @@ export function Calendario({
         variant: 'destructive',
       });
     }
-  }, [agendamentos, toast]);
+  }, [agendamentos, atualizarAgendamento, toast]);
 
   // Ícones para modalidade e status
   const getModalidadeIcon = (modalidade: string) => {
@@ -335,7 +279,7 @@ export function Calendario({
           </div>
         </div>
         <div className="text-xs text-current/80">
-          {extendedProps.tipoConsulta.replace('_', ' ')} - R$ {extendedProps.valor}
+          {extendedProps.tipoConsulta} - R$ {extendedProps.valor}
         </div>
         {extendedProps.motivoConsulta && (
           <div className="text-xs text-current/70 truncate">
@@ -346,7 +290,7 @@ export function Calendario({
     );
   };
 
-  // Botões de navegação customizados
+  // Navegação do calendário
   const navegarMes = (direction: 'prev' | 'next') => {
     const calendarApi = calendarRef.current?.getApi();
     if (calendarApi) {
@@ -370,16 +314,39 @@ export function Calendario({
     const calendarApi = calendarRef.current?.getApi();
     if (calendarApi) {
       calendarApi.today();
+      setDataSelecionada(new Date().toISOString().split('T')[0]);
     }
   };
 
-  const confirmarAgendamento = (id: number) => {
-    atualizarStatusAgendamento(id, 'confirmado');
+  const irParaData = (date: Date | undefined) => {
+    if (!date) return;
+    
+    const calendarApi = calendarRef.current?.getApi();
+    if (calendarApi) {
+      calendarApi.gotoDate(date);
+      setDataSelecionada(date.toISOString().split('T')[0]);
+      setDatePickerOpen(false);
+    }
   };
 
-  const cancelarAgendamento = (id: number) => {
-    atualizarStatusAgendamento(id, 'cancelado');
-  };
+  // Configurar horários de funcionamento para o FullCalendar
+  const businessHours = useMemo(() => {
+    const dias = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const diasPt = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+    
+    return dias.map((dia, index) => {
+      const diaPt = diasPt[index];
+      const horario = configuracao?.horarios[diaPt];
+      
+      if (!horario?.ativo) return null;
+      
+      return {
+        daysOfWeek: [index],
+        startTime: horario.inicio,
+        endTime: horario.fim
+      };
+    }).filter(Boolean);
+  }, [configuracao]);
 
   return (
     <div className="space-y-6 p-6">
@@ -395,11 +362,7 @@ export function Calendario({
             <Settings className="w-4 h-4 mr-2" />
             Configurar
           </Button>
-          <Button variant="outline" onClick={onBloquearAgenda}>
-            <Lock className="w-4 h-4 mr-2" />
-            Bloquear
-          </Button>
-          <Button variant="medical" onClick={onNovoAgendamento}>
+          <Button variant="default" onClick={onNovoAgendamento}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Agendamento
           </Button>
@@ -472,7 +435,7 @@ export function Calendario({
             size="sm"
             onClick={() => navegarMes('prev')}
           >
-            ← Anterior
+            <ChevronLeft className="w-4 h-4" />
           </Button>
           
           <Button
@@ -480,6 +443,7 @@ export function Calendario({
             size="sm"
             onClick={irParaHoje}
           >
+            <Home className="w-4 h-4 mr-1" />
             Hoje
           </Button>
           
@@ -488,8 +452,31 @@ export function Calendario({
             size="sm"
             onClick={() => navegarMes('next')}
           >
-            Próximo →
+            <ChevronRight className="w-4 h-4" />
           </Button>
+
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("w-auto justify-start text-left font-normal")}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(new Date(dataSelecionada), "dd/MM/yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={new Date(dataSelecionada)}
+                onSelect={irParaData}
+                initialFocus
+                className="pointer-events-auto"
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="flex items-center gap-2">
@@ -521,360 +508,95 @@ export function Calendario({
           >
             Lista
           </Button>
-          
-          <Separator orientation="vertical" className="h-6 mx-2" />
-          
-          <input
-            type="date"
-            value={dataSelecionada}
-            onChange={(e) => setDataSelecionada(e.target.value)}
-            className="px-3 py-2 border border-input rounded-md text-sm bg-background"
-          />
         </div>
       </div>
 
-      {/* Legenda de status */}
-      <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
+      {/* Legenda */}
+      <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-primary"></div>
-          <span className="text-sm">Agendado</span>
+          <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(var(--primary))' }}></div>
+          <span>Agendado</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(142 76% 36%)' }}></div>
-          <span className="text-sm">Confirmado</span>
+          <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(var(--flow))' }}></div>
+          <span>Confirmado</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-destructive"></div>
-          <span className="text-sm">Cancelado</span>
+          <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(var(--destructive))' }}></div>
+          <span>Cancelado</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-muted"></div>
-          <span className="text-sm">Bloqueado</span>
+          <Monitor className="w-3 h-3" />
+          <span>Online</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <User className="w-3 h-3" />
+          <span>Presencial</span>
         </div>
       </div>
 
       {/* Calendário */}
       <Card>
-        <CardContent className="p-6">
-          <div className="calendar-container">
-            <style>{`
-              .calendar-container .fc {
-                --fc-small-font-size: 0.75rem;
-                --fc-page-bg-color: transparent;
-                --fc-neutral-bg-color: hsl(var(--muted));
-                --fc-neutral-text-color: hsl(var(--muted-foreground));
-                --fc-border-color: hsl(var(--border));
-                --fc-button-text-color: hsl(var(--primary-foreground));
-                --fc-button-bg-color: hsl(var(--primary));
-                --fc-button-border-color: hsl(var(--primary));
-                --fc-button-hover-bg-color: hsl(var(--primary));
-                --fc-button-hover-border-color: hsl(var(--primary));
-                --fc-button-active-bg-color: hsl(var(--primary));
-                --fc-button-active-border-color: hsl(var(--primary));
-                --fc-event-bg-color: hsl(var(--primary));
-                --fc-event-border-color: hsl(var(--primary));
-                --fc-event-text-color: hsl(var(--primary-foreground));
-                --fc-today-bg-color: hsl(var(--accent) / 0.3);
-              }
-
-              .calendar-container .fc-event {
-                cursor: pointer;
-                transition: all 0.2s ease;
-                border-radius: 6px;
-                border-width: 1px;
-                margin: 1px;
-              }
-
-              .calendar-container .fc-event:hover {
-                filter: brightness(1.1);
-                transform: translateY(-1px);
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-              }
-
-              .calendar-container .fc-toolbar-title {
-                font-size: 1.5rem;
-                font-weight: 600;
-                color: hsl(var(--foreground));
-              }
-
-              .calendar-container .fc-button {
-                border-radius: 6px;
-                font-weight: 500;
-                padding: 0.5rem 1rem;
-                transition: all 0.2s ease;
-              }
-
-              .calendar-container .fc-button:not(:disabled):hover {
-                transform: translateY(-1px);
-              }
-
-              .calendar-container .fc-daygrid-day-number {
-                color: hsl(var(--foreground));
-                font-weight: 500;
-              }
-
-              .calendar-container .fc-col-header-cell-cushion {
-                color: hsl(var(--muted-foreground));
-                font-weight: 600;
-                text-transform: uppercase;
-                font-size: 0.75rem;
-                letter-spacing: 0.05em;
-              }
-
-              .calendar-container .fc-timegrid-slot-label-cushion {
-                color: hsl(var(--muted-foreground));
-                font-size: 0.75rem;
-              }
-
-              .calendar-container .fc-scrollgrid {
-                border-color: hsl(var(--border));
-              }
-
-              .calendar-container .fc-scrollgrid td {
-                border-color: hsl(var(--border));
-              }
-
-              @media (max-width: 768px) {
-                .calendar-container .fc-toolbar {
-                  flex-direction: column;
-                  gap: 0.5rem;
-                }
-
-                .calendar-container .fc-toolbar-chunk {
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  gap: 0.25rem;
-                }
-
-                .calendar-container .fc-button {
-                  padding: 0.25rem 0.5rem;
-                  font-size: 0.75rem;
-                }
-
-                .calendar-container .fc-toolbar-title {
-                  font-size: 1.25rem;
-                  margin: 0.5rem 0;
-                }
-              }
-            `}</style>
-
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-              initialView={window.innerWidth >= 768 ? 'timeGridWeek' : 'dayGridDay'}
-              locale={ptBrLocale}
-              timeZone="America/Sao_Paulo"
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay configuracoes bloquear novaTarefa',
-              }}
-              customButtons={{
-                novaTarefa: {
-                  text: 'Nova Consulta',
-                  click: () => onNovoAgendamento(),
-                },
-                configuracoes: {
-                  text: 'Configurações',
-                  click: () => onConfigurarAgenda(),
-                },
-                bloquear: {
-                  text: 'Bloquear',
-                  click: () => onBloquearAgenda(),
-                },
-              }}
-              events={eventsFunction}
-              eventContent={renderEventContent}
-              eventClick={handleEventClick}
-              dateClick={handleDateClick}
-              select={handleSelect}
-              eventDrop={handleEventDrop}
-              eventResize={handleEventResize}
-              editable={true}
-              selectable={true}
-              selectMirror={true}
-              dayMaxEvents={true}
-              weekends={true}
-              eventOverlap={false}
-              selectOverlap={false}
-              slotMinTime="06:00:00"
-              slotMaxTime="22:00:00"
-              businessHours={Object.entries(configuracao.horarios)
-                .filter(([_, horario]) => horario.ativo)
-                .map(([dia, horario]) => ({
-                  daysOfWeek: [
-                    ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'].indexOf(dia)
-                  ],
-                  startTime: horario.inicio,
-                  endTime: horario.fim,
-                }))}
-              slotDuration={`00:${configuracao.tempoConsulta || '60'}:00`}
-              slotLabelInterval="01:00:00"
-              height="auto"
-              contentHeight="600px"
-              nowIndicator={true}
-              scrollTime="08:00:00"
-              eventDisplay="block"
-              dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
-              slotLabelFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                omitZeroMinute: false,
-                meridiem: false,
-              }}
-              allDaySlot={false}
-              expandRows={true}
-              handleWindowResize={true}
-              stickyHeaderDates={true}
-              aspectRatio={window.innerWidth >= 768 ? 2 : 1.2}
-              eventClassNames={(arg) => {
-                const evento = eventos.find(e => e.id === arg.event.id);
-                if (!evento) return [];
-                
-                return [
-                  `event-status-${evento.extendedProps.statusAgendamento}`,
-                  `event-modalidade-${evento.extendedProps.modalidadeConsulta}`,
-                  evento.extendedProps.statusPagamento === 'pendente' ? 'event-payment-pending' : '',
-                ].filter(Boolean);
-              }}
-            />
-          </div>
-
-          {/* Legenda */}
-          <div className="mt-6 pt-4 border-t">
-            <h4 className="text-sm font-medium mb-3">Legenda</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div>
-                <h5 className="font-medium mb-2">Status</h5>
-                <div className="space-y-1">
-                  {[
-                    { status: 'agendado', color: 'bg-primary', label: 'Agendado' },
-                    { status: 'confirmado', color: 'bg-emerald-500', label: 'Confirmado' },
-                    { status: 'cancelado', color: 'bg-destructive', label: 'Cancelado' },
-                    { status: 'bloqueado', color: 'bg-muted', label: 'Bloqueado' },
-                  ].map(({ status, color, label }) => (
-                    <div key={status} className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${color}`} />
-                      <span>{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h5 className="font-medium mb-2">Modalidade</h5>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3 w-3" />
-                    <span>Presencial</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Monitor className="h-3 w-3" />
-                    <span>Online</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    <span>Híbrido</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h5 className="font-medium mb-2">Indicadores</h5>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-3 w-3 text-yellow-600" />
-                    <span>Pagamento pendente</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-3 w-3" />
-                    <span>Requer atenção</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de agendamentos do dia selecionado */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Agendamentos de {new Date(dataSelecionada).toLocaleDateString('pt-BR')}
-          </CardTitle>
-          <CardDescription>
-            {agendamentosDoDia.length} agendamento(s) encontrado(s)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {agendamentosDoDia.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum agendamento para esta data</p>
-              <Button variant="outline" className="mt-4" onClick={onNovoAgendamento}>
-                <Plus className="w-4 h-4 mr-2" />
-                Criar primeiro agendamento
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {agendamentosDoDia.map((agendamento) => (
-                <div 
-                  key={agendamento.id}
-                  className="p-4 border border-border rounded-lg hover:shadow-medical transition-all duration-300 cursor-pointer"
-                  onClick={() => onEditarAgendamento(agendamento)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-primary">{agendamento.horario}</div>
-                        <div className="text-xs text-muted-foreground">{agendamento.duracao}min</div>
-                      </div>
-                      
-                      <Separator orientation="vertical" className="h-12" />
-                      
-                      <div>
-                        <h4 className="font-semibold text-foreground">{agendamento.pacienteNome}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {agendamento.tipo} • {agendamento.local}
-                          {agendamento.videoconferencia && " • Videoconferência"}
-                        </p>
-                        {agendamento.observacoes && (
-                          <p className="text-xs text-muted-foreground mt-1">{agendamento.observacoes}</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getBadgeColor(agendamento.status)}>
-                        {getStatusLabel(agendamento.status)}
-                      </Badge>
-                      
-                      {agendamento.status === 'agendado' && (
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button 
-                            variant="flow" 
-                            size="sm"
-                            onClick={() => confirmarAgendamento(agendamento.id)}
-                          >
-                            Confirmar
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => cancelarAgendamento(agendamento.id)}
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <CardContent className="p-0">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+            initialView={visualizacao}
+            locale={ptBrLocale}
+            headerToolbar={false}
+            events={eventos}
+            eventClick={handleEventClick}
+            dateClick={handleDateClick}
+            select={handleSelect}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
+            eventContent={renderEventContent}
+            selectable={true}
+            editable={true}
+            droppable={true}
+            dayMaxEvents={true}
+            weekends={true}
+            businessHours={businessHours}
+            selectMirror={true}
+            nowIndicator={true}
+            height="auto"
+            aspectRatio={1.8}
+            expandRows={true}
+            stickyHeaderDates={true}
+            dayHeaders={true}
+            allDaySlot={false}
+            slotMinTime="06:00:00"
+            slotMaxTime="22:00:00"
+            slotDuration="00:30:00"
+            slotLabelInterval="01:00:00"
+            slotLabelFormat={{
+              hour: 'numeric',
+              minute: '2-digit',
+              omitZeroMinute: false,
+              hour12: false
+            }}
+            eventTimeFormat={{
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: false
+            }}
+            selectConstraint="businessHours"
+            eventConstraint="businessHours"
+            validRange={{
+              start: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 ano atrás
+              end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)    // 1 ano a frente
+            }}
+            dateAlignment="week"
+            dayHeaderClassNames="fc-col-header-cell fc-day"
+            dayCellClassNames="fc-daygrid-day"
+            viewClassNames="fc-view"
+            eventClassNames="fc-event cursor-pointer hover:opacity-80 transition-opacity"
+            // selectClassNames="fc-select bg-primary/20"
+            unselectAuto={true}
+            selectOverlap={false}
+            eventOverlap={false}
+            slotEventOverlap={false}
+          />
         </CardContent>
       </Card>
     </div>

@@ -6,7 +6,8 @@ import {
   FiltrosGestaoProativa,
   StatusPaciente,
   SituacaoPaciente,
-  LocalAtendimento
+  LocalAtendimento,
+  EventoAgenda
 } from "@/types/agenda";
 import { 
   mockPacientes, 
@@ -18,8 +19,12 @@ import {
   filtrarPacientes, 
   calcularMetricas 
 } from "@/utils/algoritmos";
+import { useConfiguracoes } from "@/hooks/useConfiguracoes";
 
 export function useAgendaInteligente() {
+  // Integrar com hook de configurações
+  const { configuracao: configAgenda, isHorarioBloqueado } = useConfiguracoes();
+  
   // Estados principais
   const [configuracao, setConfiguracao] = useState<ConfiguracaoGestaoProativa>(mockConfiguracaoGestaoProativa);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>(mockAgendamentos);
@@ -111,7 +116,7 @@ export function useAgendaInteligente() {
 
   return {
     // Estados
-    configuracao,
+    configuracaoGestao: configuracao,
     agendamentos,
     dataSelecionada,
     filtros,
@@ -122,6 +127,10 @@ export function useAgendaInteligente() {
     metricas,
     agendamentosDoDia,
     estatisticasDoDia,
+    
+    // Configurações integradas
+    configuracao: configAgenda,
+    isHorarioBloqueado,
     
     // Ações
     setDataSelecionada,

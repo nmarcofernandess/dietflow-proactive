@@ -121,6 +121,26 @@ export interface FiltrosGestaoProativa {
   statusAgendamento: "todos" | "agendados" | "nao_agendados";
 }
 
+export interface EventoAgenda {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  extendedProps: {
+    agendamento: Agendamento;
+    pacienteNome: string;
+    statusAgendamento: StatusAgendamento;
+    modalidadeConsulta: "presencial" | "online" | "hibrido";
+    tipoConsulta: TipoConsulta;
+    valor?: string;
+    statusPagamento?: "pendente" | "pago" | "cancelado";
+    motivoConsulta?: string;
+  };
+}
+
 export interface NovoAgendamentoForm {
   pacienteId: number;
   data: string;

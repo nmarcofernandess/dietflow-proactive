@@ -89,14 +89,14 @@ export function TabGestaoProativa({
   };
 
   const gerarLinkWhatsApp = (paciente: any) => {
-    const template = configuracao.templatesWhatsApp[paciente.status.toLowerCase() as keyof typeof configuracao.templatesWhatsApp];
+    const template = "Olá, sua consulta está agendada!"; // configuracao.templatesWhatsApp[paciente.status.toLowerCase() as keyof typeof configuracao.templatesWhatsApp];
     return criarLinkWhatsApp(
       paciente.nome,
       paciente.telefone,
       paciente.tipoUltimoAtendimento || 'consulta',
       paciente.localAtendimento,
       template,
-      configuracao.datasAtendimentoPorCidade
+      {} // configuracao.datasAtendimentoPorCidade
     );
   };
 
