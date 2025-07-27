@@ -34,11 +34,11 @@ interface ModalNovoAgendamentoProps {
 }
 
 export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: ModalNovoAgendamentoProps) {
-  const { adicionarAgendamento, atualizarAgendamento } = useAgendaInteligente();
+  const { adicionarAgendamento, atualizarAgendamento, dataSelecionada } = useAgendaInteligente();
   
   const [form, setForm] = useState<NovoAgendamentoForm>({
     pacienteId: 0,
-    data: new Date().toISOString().split('T')[0],
+    data: dataSelecionada || new Date().toISOString().split('T')[0],
     horaInicio: "09:00",
     horaFim: "10:00",
     tipo: "Consulta",
@@ -75,7 +75,7 @@ export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: M
       // Reset para novo agendamento
       setForm({
         pacienteId: 0,
-        data: new Date().toISOString().split('T')[0],
+        data: dataSelecionada || new Date().toISOString().split('T')[0],
         horaInicio: "09:00",
         horaFim: "10:00",
         tipo: "Consulta",
@@ -88,7 +88,7 @@ export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: M
         avisarPaciente: true
       });
     }
-  }, [agendamentoEditando]);
+  }, [agendamentoEditando, dataSelecionada]);
 
   const calcularHoraFim = (horaInicio: string, tipo: TipoConsulta) => {
     const [hora, minuto] = horaInicio.split(':').map(Number);
@@ -158,7 +158,7 @@ export function ModalNovoAgendamento({ isOpen, onClose, agendamentoEditando }: M
     // Reset form
     setForm({
       pacienteId: 0,
-      data: new Date().toISOString().split('T')[0],
+      data: dataSelecionada || new Date().toISOString().split('T')[0],
       horaInicio: "09:00",
       horaFim: "10:00",
       tipo: "Consulta",

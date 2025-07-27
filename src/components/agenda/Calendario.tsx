@@ -48,6 +48,7 @@ export function Calendario({
     agendamentosDoDia, 
     estatisticasDoDia,
     atualizarStatusAgendamento, 
+    atualizarAgendamento,
     removerAgendamento 
   } = useAgendaInteligente();
 
@@ -55,6 +56,8 @@ export function Calendario({
   const { toast } = useToast();
   const calendarRef = useRef<FullCalendar>(null);
   const [visualizacao, setVisualizacao] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay' | 'listWeek'>('timeGridWeek');
+
+  console.log('📊 Configuração atual do calendário:', configuracao);
 
   // Forçar re-render quando eventos mudam
   useEffect(() => {
@@ -145,6 +148,7 @@ export function Calendario({
 
   // Manipular clique em data
   const handleDateClick = useCallback((info: any) => {
+    console.log('📅 Data clicada:', info.dateStr);
     setDataSelecionada(info.dateStr);
     onNovoAgendamento();
   }, [onNovoAgendamento, setDataSelecionada]);
@@ -152,10 +156,20 @@ export function Calendario({
   // Manipular seleção de horário
   const handleSelect = useCallback((selectInfo: any) => {
     const startDate = new Date(selectInfo.start);
+    const endDate = selectInfo.end ? new Date(selectInfo.end) : undefined;
     const hora = startDate.toTimeString().substring(0, 5);
+    
+    console.log('📅 Horário selecionado:', { 
+      start: selectInfo.start, 
+      end: selectInfo.end, 
+      startDate, 
+      endDate, 
+      hora 
+    });
     
     // Verificar se o horário está bloqueado
     if (isHorarioBloqueado(startDate, hora)) {
+      console.log('🚫 Horário bloqueado detectado!');
       toast({
         title: "Horário bloqueado",
         description: "Este horário não está disponível para agendamento.",
@@ -164,9 +178,110 @@ export function Calendario({
       return;
     }
     
-    setDataSelecionada(selectInfo.startStr.split('T')[0]);
+    console.log('✅ Horário disponível, prosseguindo...');
+    
+    // Definir a data selecionada
+    const dataStr = selectInfo.startStr.split('T')[0];
+    setDataSelecionada(dataStr);
+    
+    // Abrir modal de novo agendamento
     onNovoAgendamento();
   }, [onNovoAgendamento, setDataSelecionada, isHorarioBloqueado, toast]);
+
+  // Manipular drag e drop de eventos
+  const handleEventDrop = useCallback((dropInfo: any) => {
+    const { event } = dropInfo;
+    
+    try {
+      // Encontrar agendamento correspondente
+      const agendamento = agendamentos.find(a => a.id.toString() === event.id);
+      if (!agendamento) return;
+
+      // Converter nova data/hora
+      const novaData = event.start.toISOString().split('T')[0];
+      const novaHora = event.start.toTimeString().substring(0, 5);
+      
+      console.log('📅 Movendo evento:', { 
+        id: event.id, 
+        novaData, 
+        novaHora 
+      });
+
+      // Verificar se novo horário está bloqueado
+      if (isHorarioBloqueado(event.start, novaHora)) {
+        dropInfo.revert();
+        toast({
+          title: "Horário bloqueado",
+          description: "Este horário não está disponível.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Atualizar agendamento
+      const agendamentoAtualizado = {
+        ...agendamento,
+        data: novaData,
+        horario: novaHora
+      };
+
+      // Usar hook para atualizar
+      atualizarAgendamento(agendamentoAtualizado);
+      
+      toast({
+        title: 'Evento movido',
+        description: 'O agendamento foi movido com sucesso.',
+      });
+    } catch (error) {
+      dropInfo.revert();
+      toast({
+        title: 'Erro ao mover evento',
+        description: 'Não foi possível mover o agendamento.',
+        variant: 'destructive',
+      });
+    }
+  }, [agendamentos, isHorarioBloqueado, toast]);
+
+  const handleEventResize = useCallback((resizeInfo: any) => {
+    const { event } = resizeInfo;
+    
+    try {
+      // Encontrar agendamento correspondente
+      const agendamento = agendamentos.find(a => a.id.toString() === event.id);
+      if (!agendamento) return;
+
+      // Calcular nova duração
+      const inicio = new Date(event.start);
+      const fim = new Date(event.end);
+      const novaDuracao = Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60));
+      
+      console.log('📏 Redimensionando evento:', { 
+        id: event.id, 
+        novaDuracao 
+      });
+
+      // Atualizar agendamento
+      const agendamentoAtualizado = {
+        ...agendamento,
+        duracao: novaDuracao
+      };
+
+      // Usar hook para atualizar
+      atualizarAgendamento(agendamentoAtualizado);
+      
+      toast({
+        title: 'Evento redimensionado',
+        description: 'A duração do agendamento foi alterada com sucesso.',
+      });
+    } catch (error) {
+      resizeInfo.revert();
+      toast({
+        title: 'Erro ao redimensionar evento',
+        description: 'Não foi possível alterar a duração do agendamento.',
+        variant: 'destructive',
+      });
+    }
+  }, [agendamentos, toast]);
 
   // Ícones para modalidade e status
   const getModalidadeIcon = (modalidade: string) => {
@@ -572,7 +687,10 @@ export function Calendario({
               events={eventsFunction}
               eventContent={renderEventContent}
               eventClick={handleEventClick}
+              dateClick={handleDateClick}
               select={handleSelect}
+              eventDrop={handleEventDrop}
+              eventResize={handleEventResize}
               editable={true}
               selectable={true}
               selectMirror={true}
