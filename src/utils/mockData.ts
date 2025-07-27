@@ -117,15 +117,15 @@ export const mockBloqueios: BloqueioAgenda[] = [
 
 // Configuração padrão da agenda
 export const mockConfiguracaoAgenda: ConfiguracaoAgenda = {
-  diasTrabalho: ["segunda", "terca", "quarta", "quinta", "sexta", "sabado"],
-  tempoMedioConsulta: 60,
-  horariosPorDia: {
-    segunda: { inicio: "08:00", fim: "18:00", intervalos: [{ inicio: "12:00", fim: "13:00" }] },
-    terca: { inicio: "08:00", fim: "18:00", intervalos: [{ inicio: "12:00", fim: "13:00" }] },
-    quarta: { inicio: "08:00", fim: "18:00", intervalos: [{ inicio: "12:00", fim: "13:00" }] },
-    quinta: { inicio: "08:00", fim: "18:00", intervalos: [{ inicio: "12:00", fim: "13:00" }] },
-    sexta: { inicio: "08:00", fim: "18:00", intervalos: [{ inicio: "12:00", fim: "13:00" }] },
-    sabado: { inicio: "08:00", fim: "12:00" }
+  tempoConsulta: '60',
+  horarios: {
+    segunda: { ativo: true, inicio: '08:00', fim: '18:00', intervalos: [{ id: '1', inicio: '12:00', fim: '13:00' }] },
+    terca: { ativo: true, inicio: '08:00', fim: '18:00', intervalos: [{ id: '2', inicio: '12:00', fim: '13:00' }] },
+    quarta: { ativo: true, inicio: '08:00', fim: '18:00', intervalos: [{ id: '3', inicio: '12:00', fim: '13:00' }] },
+    quinta: { ativo: true, inicio: '08:00', fim: '18:00', intervalos: [{ id: '4', inicio: '12:00', fim: '13:00' }] },
+    sexta: { ativo: true, inicio: '08:00', fim: '18:00', intervalos: [{ id: '5', inicio: '12:00', fim: '13:00' }] },
+    sabado: { ativo: true, inicio: '08:00', fim: '12:00', intervalos: [] },
+    domingo: { ativo: false, inicio: '08:00', fim: '12:00', intervalos: [] }
   }
 };
 

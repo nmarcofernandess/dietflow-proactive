@@ -39,6 +39,36 @@ export interface Agendamento {
   videoconferencia?: boolean;
 }
 
+export interface BloqueioHorario {
+  id: string;
+  data: Date;
+  horaInicio: string;
+  horaFim: string;
+  motivo: string;
+  tipo: 'unico' | 'recorrente';
+  recorrencia?: 'semanal' | 'mensal';
+}
+
+export interface IntervaloHorario {
+  id: string;
+  inicio: string;
+  fim: string;
+}
+
+export interface HorarioDia {
+  ativo: boolean;
+  inicio: string;
+  fim: string;
+  intervalos: IntervaloHorario[];
+}
+
+export interface ConfiguracaoAgenda {
+  tempoConsulta: string;
+  horarios: {
+    [diaSemana: string]: HorarioDia;
+  };
+}
+
 export interface BloqueioAgenda {
   id: number;
   tipo: TipoBloqueio;
@@ -49,18 +79,6 @@ export interface BloqueioAgenda {
   horaFinal: string; // HH:MM
   titulo?: string;
   informacoes?: string;
-}
-
-export interface ConfiguracaoAgenda {
-  diasTrabalho: string[]; // ['segunda', 'terca', ...]
-  tempoMedioConsulta: number; // minutos
-  horariosPorDia: {
-    [diaSemana: string]: {
-      inicio: string;
-      fim: string;
-      intervalos?: { inicio: string; fim: string }[];
-    };
-  };
 }
 
 export interface ConfiguracaoGestaoProativa {
